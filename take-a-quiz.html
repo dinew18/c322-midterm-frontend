@@ -3,9 +3,178 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  <title>Take a Quiz</title>
+  <link rel="stylesheet" href="navbar.css">
+  <link rel="stylesheet" href="general.css">
+  <link rel="stylesheet" href="cards.css">
+  <style>
+    /* CSS styles */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    #quizSection {
+      display: none;
+    }
+    #questionContainer {
+      margin-top: 20px;
+    }
+    #navigationButtons {
+      margin-top: 20px;
+    }
+    #prevButton,
+    #nextButton {
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 4px 2px;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    #prevButton:hover,
+    #nextButton:hover {
+      background-color: #45a049;
+    }
+  </style>
 </head>
 <body>
+  <!-- Navigation bar -->
+  <ul class="topnav">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="add-question.html">Add questions</a></li>
+    <li><a href="make-a-quiz.html">Create a quiz</a></li>
+    <li><a class="active" href="take-a-quiz.html">Take a quiz</a></li>
+    <li class="right"><a href="#about">About</a></li>
+  </ul>
+
+  <!-- Quizzes Bank -->
+  <h2>Choose a Quiz:</h2>
+  <div id="quizzesBank" class="cards">
+    <!-- Quizzes will be displayed here -->
+  </div>
+
+  <!-- Quiz Section -->
+  <div id="quizSection">
+    <h2 id="quizTitle"></h2>
+    <div id="questionContainer"></div>
+    <div id="navigationButtons">
+      <button id="prevButton" style="display: none;" onclick="prevQuestion()">Previous</button>
+      <button id="nextButton" onclick="nextQuestion()">Next</button>
+    </div>
+  </div>
+
+  <script>
+    // Global variables to keep track of the current quiz and question index
+    let currentQuiz;
+    let currentQuestionIndex = 0;
+  
+    // Backend URL
+    const host = 'http://localhost:8080';
+  
+    // Function to fetch quizzes from the backend and display in the quizzes bank
+    async function displayQuizzes() {
+      try {
+        const response = await fetch(`${host}/quizzes`);
+        const quizzes = await response.json();
+        const quizzesBank = document.getElementById('quizzesBank');
+        quizzesBank.innerHTML = ''; // Clear existing quizzes
+        quizzes.forEach(quiz => {
+          const quizItem = document.createElement('div');
+          quizItem.classList.add('card', 'quiz-item');
+          quizItem.dataset.quizId = quiz.id;
+          quizItem.innerHTML = `
+            <div>${quiz.id}</div>
+            <div>${quiz.title}</div>
+          `;
+          quizItem.addEventListener('click', async () => {
+            currentQuiz = quiz;
+            document.getElementById('quizzesBank').style.display = 'none';
+            document.getElementById('quizSection').style.display = 'block';
+            document.getElementById('quizTitle').textContent = quiz.title;
+            await displayQuestions(quiz.id);
+          });
+          quizzesBank.appendChild(quizItem);
+        });
+      } catch (error) {
+        console.error('Error fetching quizzes:', error);
+      }
+    }
+  
+    // Function to fetch questions for the selected quiz and display them
+    async function displayQuestions(quizId) {
+      try {
+        const response = await fetch(`${host}/quizzes/${quizId}/questions`);
+        const questions = await response.json();
+        currentQuestionIndex = 0; // Reset question index
+        displayQuestion(currentQuestionIndex, questions);
+      } catch (error) {
+        console.error('Error fetching questions:', error);
+      }
+    }
+  
+    // Function to display a single question
+    function displayQuestion(index, questions) {
+      const questionContainer = document.getElementById('questionContainer');
+      questionContainer.innerHTML = ''; // Clear existing questions
+      const question = questions[index];
+      const questionCard = document.createElement('div');
+      questionCard.classList.add('card');
+      questionCard.innerHTML = `
+        <div>${question.description}</div>
+        ${getOptionsHTML(question.choices)}
+      `;
+      questionContainer.appendChild(questionCard);
+  
+      // Show or hide navigation buttons based on current question index
+      const prevButton = document.getElementById('prevButton');
+      const nextButton = document.getElementById('nextButton');
+      prevButton.style.display = index === 0 ? 'none' : 'inline-block';
+      nextButton.textContent = index === questions.length - 1 ? 'Submit' : 'Next';
+    }
+  
+    // Function to navigate to the previous question
+    function prevQuestion() {
+      if (currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        displayQuestion(currentQuestionIndex, currentQuiz.questions);
+      }
+    }
+  
+    // Function to navigate to the next question or submit quiz
+    function nextQuestion() {
+      if (currentQuestionIndex < currentQuiz.questions.length - 1) {
+        currentQuestionIndex++;
+        displayQuestion(currentQuestionIndex, currentQuiz.questions);
+      } else {
+        // Submit quiz logic here
+        // For demonstration, you can just show an alert with the submitted message
+        alert('Quiz submitted!');
+      }
+    }
+  
+    // Function to generate HTML for answer options (radio buttons)
+    function getOptionsHTML(choices) {
+      let optionsHTML = '';
+      choices.forEach((choice, index) => {
+        optionsHTML += `
+          <input type="radio" id="option${index}" name="answer" value="${choice}">
+          <label for="option${index}">${choice}</label><br>
+        `;
+      });
+      return optionsHTML;
+    }
+  
+    // Call the function to display quizzes when the page loads
+    displayQuizzes();
+  </script>
+  
+  
   
 </body>
 </html>

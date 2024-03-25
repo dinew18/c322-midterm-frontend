@@ -3,9 +3,170 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  <title>Create a Quiz</title>
+  <link rel="stylesheet" href="navbar.css">
+  <link rel="stylesheet" href="general.css">
+  <link rel="stylesheet" href="cards.css">
+  <style>
+    /* Additional CSS styles for the quiz interface */
+    .quiz-container {
+      display: flex;
+    }
+    .questions-bank {
+      flex: 70; /* Adjust the width here */
+      padding: 10px;
+    }
+    .quiz-panel {
+      flex: 30; /* Adjust the width here */
+      padding: 10px;
+    }
+    .question-item {
+      cursor: pointer;
+    }
+    #quizTitleInput {
+      margin-bottom: 10px;
+    }
+    .btn-container {
+      display: flex;
+      flex-direction: column;
+    }
+    .btn-container button {
+      margin-bottom: 5px;
+    }
+  </style>
 </head>
 <body>
+  <ul class="topnav">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="add-question.html">Add questions</a></li>
+    <li><a class="active" href="make-a-quiz.html">Create a quiz</a></li>
+    <li><a href="take-a-quiz.html">Take a quiz</a></li>
+    <li class="right"><a href="#about">About</a></li>
+  </ul>
+
+  <div class="quiz-container">
+    <!-- Questions Bank -->
+    <div class="questions-bank">
+      <h2>Questions Bank</h2>
+      <div id="questionsBank" class="cards">
+        <!-- Display questions from backend here -->
+      </div>
+    </div>
+
+    <!-- Quiz Panel -->
+    <div class="quiz-panel">
+      <h2>Quiz Panel</h2>
+      <input type="text" id="quizTitleInput" placeholder="Enter quiz title...">
+      <div class="btn-container">
+        <button id="saveChangesBtn">Save your changes</button>
+        <button id="startNewQuizBtn">Save this quiz and start a new one</button>
+      </div>
+      <div id="quizPanel" class="cards">
+        <!-- Selected questions for the quiz will be displayed here -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async function () {
+      const host = 'http://localhost:8080'; // Update with your backend URL
   
+      // Function to fetch questions from backend and display in the questions bank
+      async function displayQuestions() {
+        const response = await fetch(`${host}/questions`);
+        const questions = await response.json();
+        const questionsBank = document.getElementById('questionsBank');
+        questionsBank.innerHTML = ''; // Clear existing questions
+        questions.forEach(question => {
+          const questionItem = document.createElement('div');
+          questionItem.classList.add('card', 'question-item');
+          questionItem.dataset.questionId = question.id;
+          questionItem.innerHTML = `
+            <img src="${host}/questions/${question.id}/image" alt="Question Image" style="width:100%">
+            <div>${question.id}</div>
+            <div>${question.description}</div>
+          `;
+          questionItem.addEventListener('click', () => addQuestionToQuiz(question));
+          questionsBank.appendChild(questionItem);
+        });
+      }
+  
+      // Function to add a question to the quiz panel
+      function addQuestionToQuiz(question) {
+        const quizPanel = document.getElementById('quizPanel');
+        const existingQuestionIds = Array.from(quizPanel.children).map(item => parseInt(item.dataset.questionId));
+        if (!existingQuestionIds.includes(question.id)) {
+          const questionItem = document.createElement('div');
+          questionItem.classList.add('card', 'question-item');
+          questionItem.dataset.questionId = question.id;
+          questionItem.innerHTML = `
+            <img src="${host}/questions/${question.id}/image" alt="Question Image" style="width:100%">
+            <div>${question.id}</div>
+            <div>${question.description}</div>
+          `;
+          questionItem.addEventListener('click', () => removeQuestionFromQuiz(question));
+          quizPanel.appendChild(questionItem);
+        }
+      }
+  
+      // Function to remove a question from the quiz panel
+      function removeQuestionFromQuiz(question) {
+        const quizPanel = document.getElementById('quizPanel');
+        const questionItem = quizPanel.querySelector(`.question-item[data-question-id="${question.id}"]`);
+        if (questionItem) {
+          quizPanel.removeChild(questionItem);
+        }
+      }
+
+      // Function to save changes to the backend
+      async function saveChanges() {
+        const quizTitleInput = document.getElementById('quizTitleInput');
+        const quizTitle = quizTitleInput.value.trim();
+        if (!quizTitle) {
+          alert('Please enter a title for the quiz.');
+          return;
+        }
+        const quizPanel = document.getElementById('quizPanel');
+        const questionIds = Array.from(quizPanel.children).map(item => parseInt(item.dataset.questionId));
+        if (questionIds.length === 0) {
+          alert('Please add questions to the quiz before saving.');
+          return;
+        }
+        const requestData = {
+          title: quizTitle,
+          questionIds: questionIds
+        };
+        let method = 'POST';
+        const response = await fetch(`${host}/quizzes`, {
+          method: method,
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestData)
+        });
+        if (response.ok) {
+          alert('Quiz saved successfully!');
+        } else {
+          alert('Failed to save the quiz.');
+        }
+      }
+        // Function to handle starting a new quiz
+        async function startNewQuiz() {
+        const quizPanel = document.getElementById('quizPanel');
+        quizPanel.innerHTML = ''; // Clear the quiz panel
+        await saveChanges(); // Save the current quiz before starting a new one
+        location.reload(); // Refresh the page to start a new quiz
+      }
+
+      // Event listener for save changes button
+      document.getElementById('saveChangesBtn').addEventListener('click', saveChanges);
+
+      // Event listener for start new quiz button
+      document.getElementById('startNewQuizBtn').addEventListener('click', startNewQuiz);
+
+      // Display questions when the page loads
+      await displayQuestions();
+    });
+  </script>
 </body>
 </html>
